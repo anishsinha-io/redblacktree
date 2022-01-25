@@ -10,10 +10,13 @@ typedef struct RBNode RBNode;
 
 RBTree *rbtree(void);
 void insert(RBTree *, double);
+void delete(RBTree *, double);
 void inorder(RBTree *);
 void preorder(RBTree *);
 void postorder(RBTree *);
+RBNode *root(RBTree *);
 void test(RBTree *);
 void test1(RBTree *, double);
+
 
 #endif //REDBLACKTREE_RBTREE_H
