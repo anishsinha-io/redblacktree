@@ -5,7 +5,7 @@
 // Definitions
 
 typedef enum COLOR {
-    doubleblack = -1, black = 0, red = 1
+    black = 0, red = 1
 } COLOR;
 
 typedef struct RBNode {
@@ -28,10 +28,6 @@ RBNode *rbnode(double val, COLOR col) {
     node->col = col;
     node->par = node->left = node->right = NULL;
     return node;
-}
-
-static RBNode *dbnode() {
-    return rbnode(0, doubleblack);
 }
 
 RBTree *rbtree() {
@@ -121,7 +117,6 @@ static void splice(RBNode *node) {
 }
 
 static bool red_replacement(RBNode *par, RBNode *node) {
-
     if (is_leaf(node)) return false;
 }
 
@@ -191,15 +186,28 @@ static void rb_delete(RBNode **root, double val) {
         splice(n);
         n = NULL;
         free(n);
+    } else if (is_leaf(n) && n->col == black) {
+        RBNode *sibling;
+        if (is_left_child(n)) sibling = n->par->right;
+        else sibling = n->par->left;
+        if (sibling->col == black &&
+            (is_leaf(sibling) || sibling->left->col == black && sibling->right->col == black)) {
+            splice(n);
+            n->par->col = black;
+            sibling->col = red;
+            n = NULL;
+            free(n);
+        } else if (sibling->col == black && !is_leaf(sibling) &&
+                   (sibling->left->col == red || sibling->right->col == red)) {
+
+        }
     } else if (n->left && n->right) {
         if (n->col == red) {
             RBNode *repl = inorder_predecessor(n);
             rb_delete(root, repl->val);
             n->val = repl->val;
-            repl = NULL;
-            free(repl);
         } else {
-            printf("here\n");
+
         }
     } else if (n->left || n->right) {
         RBNode *repl;
