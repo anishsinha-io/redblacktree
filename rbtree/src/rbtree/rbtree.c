@@ -5,7 +5,7 @@
 // Definitions
 
 typedef enum COLOR {
-    black = 0, red = 1
+    doubleblack = -1, black = 0, red = 1
 } COLOR;
 
 typedef struct RBNode {
@@ -102,7 +102,7 @@ static bool is_left_child(RBNode *node) {
 }
 
 static bool is_leaf(RBNode *node) {
-    return !(node->left && node->right);
+    return !(node->left || node->right);
 }
 
 static RBNode *non_null_child(RBNode *node) {
@@ -116,8 +116,10 @@ static void splice(RBNode *node) {
     } else node->par->right = NULL;
 }
 
-static bool red_replacement(RBNode *par, RBNode *node) {
-    if (is_leaf(node)) return false;
+static bool has_red_child(RBNode *n) {
+    if (is_leaf(n)) return false;
+    if ((n->left && n->left->col == red) || (n->right && n->right->col == red)) return true;
+    return false;
 }
 
 static void repair(RBNode **root, RBNode **new_node) {
@@ -142,7 +144,12 @@ static void repair(RBNode **root, RBNode **new_node) {
             !new_par->par && (*root = new_par);
             gr->col = red;
             new_par->col = black;
-            great_gr && (great_gr->right = new_par);
+            if (great_gr) {
+                new_par->par = great_gr;
+                if (new_par->val > great_gr->val) great_gr->right = new_par;
+                else great_gr->left = new_par;
+            }
+            repair(root, &gr);
         }
     } else {
         unc = gr->right;
@@ -159,7 +166,12 @@ static void repair(RBNode **root, RBNode **new_node) {
             !new_par->par && (*root = new_par);
             gr->col = red;
             new_par->col = black;
-            great_gr && (great_gr->left = new_par);
+            if (great_gr) {
+                new_par->par = great_gr;
+                if (new_par->val > great_gr->val) great_gr->right = new_par;
+                else great_gr->left = new_par;
+            }
+            repair(root, &new_par);
         }
     }
 }
@@ -179,51 +191,105 @@ void insert(RBTree *tree, double val) {
     repair(&(tree->root), &new_node);
 }
 
-static void rb_delete(RBNode **root, double val) {
-    RBNode *n = search(*root, val);
-    if (!n) return;
-    if (is_leaf(n) && n->col == red) {
-        splice(n);
-        n = NULL;
-        free(n);
-    } else if (is_leaf(n) && n->col == black) {
-        RBNode *sibling;
-        if (is_left_child(n)) sibling = n->par->right;
-        else sibling = n->par->left;
-        if (sibling->col == black &&
-            (is_leaf(sibling) || sibling->left->col == black && sibling->right->col == black)) {
-            splice(n);
-            n->par->col = black;
-            sibling->col = red;
-            n = NULL;
-            free(n);
-        } else if (sibling->col == black && !is_leaf(sibling) &&
-                   (sibling->left->col == red || sibling->right->col == red)) {
-
-        }
-    } else if (n->left && n->right) {
-        if (n->col == red) {
-            RBNode *repl = inorder_predecessor(n);
-            rb_delete(root, repl->val);
-            n->val = repl->val;
-        } else {
-
-        }
-    } else if (n->left || n->right) {
+static RBNode *bst_splice(RBNode **root, double val) {
+    RBNode *node = search(*root, val);
+    if (!node) return NULL;
+    if (is_leaf(node)) {
+        splice(node);
+        return node;
+    } else if ((!node->left || !node->right) && !(node->left && node->right)) {
         RBNode *repl;
-        if (n->left) repl = n->left;
-        else repl = n->right;
-        repl->col = black;
-        bool left_child = is_left_child(n);
-        RBNode *par = n->par;
-        splice(n);
-        if (!par) *root = repl;
-        if (left_child) par && (par->left = repl);
-        else par && (par->right = repl);
-        repl->par = par;
-        n = NULL;
-        free(n);
+        if (node->left) repl = node->left;
+        else repl = node->right;
+        RBNode *spliced_node = bst_splice(root, repl->val);
+        node->val = repl->val;
+        return spliced_node;
+    } else {
+        RBNode *repl = inorder_predecessor(node);
+        RBNode *spliced_node = bst_splice(root, repl->val);
+        node->val = repl->val;
+        return spliced_node;
     }
+}
+
+static void resolve_double_black(RBNode **root, RBNode *double_black_node) {
+    if (*root == double_black_node) return;
+    RBNode *sibling, *par = double_black_node->par, *gr = par->par;
+    bool left_child = is_left_child(double_black_node);
+    if (left_child) sibling = par->right;
+    else sibling = par->left;
+    if ((sibling && sibling->col == black) || !sibling) {
+        RBNode *intermediate_par, *new_par;
+        bool sib_left_child = is_left_child(sibling);
+        if (is_leaf(sibling)) {
+            if (par->col == red) {
+                par->col = black;
+                sibling && (sibling->col = red);
+            } else {
+                sibling && (sibling->col = red);
+                resolve_double_black(root, par);
+            }
+            return;
+        }
+        if (is_left_child(double_black_node) && ((sibling && sibling->left) && sibling->left->col == red) &&
+            !sibling->right) {
+            intermediate_par = rotate_right(sibling);
+            if (sib_left_child) par->left = intermediate_par;
+            else par->right = intermediate_par;
+            intermediate_par->col = black;
+            intermediate_par->right->col = red;
+        }
+        if (!is_left_child(double_black_node) && ((sibling && sibling->right) && sibling->right->col == red) &&
+            !sibling->left) {
+            intermediate_par = rotate_left(sibling);
+            if (sib_left_child) par->left = intermediate_par;
+            else par->right = intermediate_par;
+            intermediate_par->col = black;
+            intermediate_par->left->col = red;
+        }
+        if (left_child) new_par = rotate_left(par);
+        else new_par = rotate_right(par);
+        new_par->col = red;
+        if (new_par->left) new_par->left->col = black;
+        if (new_par->right) new_par->right->col = black;
+        if (!gr) {
+            *root = new_par;
+            new_par->col = black;
+        } else {
+            new_par->par = gr;
+            if (new_par->val < gr->val) gr->left = new_par;
+            else gr->right = new_par;
+        }
+    } else if (sibling->col == red && par->col == black) {
+        RBNode *new_par;
+        par->col = red;
+        if (left_child) new_par = rotate_left(par);
+        else new_par = rotate_right(par);
+        if (!gr) {
+            *root = new_par;
+            new_par->col = black;
+        } else {
+            new_par->par = gr;
+            if (new_par->val < gr->val) gr->left = new_par;
+            else gr->right = new_par;
+        }
+        new_par->col = black;
+        resolve_double_black(root, double_black_node);
+    }
+}
+
+
+static void rb_delete(RBNode **root, double val) {
+    RBNode *node = bst_splice(root, val);
+    if (!node) return;
+    if (node->col == red) return;
+    if (node->col == black && *root == node) {
+        *root = NULL;
+        return;
+    } else {
+        resolve_double_black(root, node);
+    }
+
 }
 
 void delete(RBTree *tree, double val) {
@@ -274,17 +340,11 @@ void postorder(RBTree *tree) {
 void test(RBTree *tree) {
     RBNode *root = tree->root;
     printf("%f | %d\n", root->val, root->col);
-    printf("%f | %d\n", root->left->val, root->left->col);
-    printf("%f | %d\n", root->left->left->val, root->left->left->col);
-    printf("%f | %d\n", root->left->right->val, root->left->right->col);
-    printf("%f | %d\n", root->left->left->left->val, root->left->left->left->col);
-    printf("%f | %d\n", root->left->left->right->val, root->left->left->right->col);
-    printf("\n");
     printf("%f | %d\n", root->right->val, root->right->col);
     printf("%f | %d\n", root->right->left->val, root->right->left->col);
     printf("%f | %d\n", root->right->right->val, root->right->right->col);
-    printf("%f | %d\n", root->right->right->right->val, root->right->right->right->col);
-    printf("\n");
+    printf("%f | %d\n", root->right->right->left->val, root->right->right->left->col);
+    printf("%f | %d\n", root->right->left->right->val, root->right->left->right->col);
 }
 
 void test1(RBTree *tree, double val) {
