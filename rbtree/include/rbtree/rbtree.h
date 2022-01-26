@@ -15,7 +15,8 @@ void inorder(RBTree *);
 void preorder(RBTree *);
 void postorder(RBTree *);
 RBNode *root(RBTree *);
-void test(RBTree *);
+void test_suite_one(RBTree *);
+void test_suite_two(RBNode *);
 void test1(RBTree *, double);
 
 
