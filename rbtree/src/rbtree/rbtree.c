@@ -207,7 +207,8 @@ static RBNode *sibling(RBNode *node) {
 }
 
 static bool has_red_child(RBNode *node) {
-    if ((node->left && node->left->col == red) || (node->right && node->right->col == red)) return true;
+    if ((node->left && node->left->col == red) || (node->right && node->right->col == red))
+        return true;
     return false;
 }
 
@@ -241,6 +242,7 @@ static void resolve_double_black(RBNode **root, RBNode *double_black_node) {
     // cases 1 through 4 --> sibling is black and has at least one red child
     if (sib->col == black && has_red_child(sib)) {
         // cases 1 and 2 --> node is a left child
+        COLOR par_initial_col = par->col;
         if (is_left_child(double_black_node)) {
             if (red_left_child(sib)) {
                 // if we're here, we need to rotate right about the sibling first, recolor, then left about the parent
@@ -255,7 +257,7 @@ static void resolve_double_black(RBNode **root, RBNode *double_black_node) {
                 (*root)->col = black;
                 new_par->par = NULL;
             } else {
-                new_par->col = red;
+                new_par->col = par_initial_col;
                 recolor_children(new_par, black);
             }
         } else {
@@ -274,19 +276,19 @@ static void resolve_double_black(RBNode **root, RBNode *double_black_node) {
                     (*root)->col = black;
                     new_par->par = NULL;
                 } else {
-                    new_par->col = red;
+                    new_par->col = par_initial_col;
                     recolor_children(new_par, black);
                 }
             }
         }
     } else if (sib->col == black && !has_red_child(sib)) {
-        // if the parent is red, just recolor parent and sibling, otherwise recurse up the tree until we hit a case
-        // we can handle, or we reach the root, in which case just return
+        // case 5 --> if the parent is red, just recolor parent and sibling, otherwise recurse up the tree until we
+        // hit a case we can handle, or we reach the root, in which case just return
         sib->col = red;
         if (par->col == red) par->col = black;
         else resolve_double_black(root, par);
     } else {
-        // if we are here, the sibling is red
+        // case 6 --> if we are here, the sibling is red. rotate and recurse
         RBNode *new_par;
         if (is_left_child(double_black_node)) new_par = rotate_left(par);
         else new_par = rotate_right(par);
@@ -294,11 +296,13 @@ static void resolve_double_black(RBNode **root, RBNode *double_black_node) {
             *root = new_par;
             (*root)->col = black;
             new_par->par = NULL;
-            new_par->left->col = red;
+            if (is_left_child(double_black_node)) new_par->left->col = red;
+            else new_par->right->col = red;
             resolve_double_black(root, double_black_node);
         } else {
-            new_par->col = red;
-            new_par->left->col = red;
+            new_par->col = black;
+            if (is_left_child(double_black_node)) new_par->left->col = red;
+            else new_par->right->col = red;
             resolve_double_black(root, double_black_node);
         }
     }
@@ -358,27 +362,162 @@ void postorder(RBTree *tree) {
     postorder_helper(tree->root);
 }
 
-// Test -> to check the validity of the test_suite_one itself go to https://www.cs.usfca.edu/~galles/visualization/RedBlack.html
-// to visualize the tree in a prettier way than is present in this program
+// Tests -> to check the validity of the tests, visit https://www.cs.usfca.edu/~galles/visualization/RedBlack.html
+// to visualize the tree yourself.
 
-void test_suite_one(RBTree *tree) {
-    RBNode *root = tree->root;
-    printf("%f | %d\n", root->val, root->col);
-    printf("%f | %d\n", root->left->val, root->left->col);
-    printf("%f | %d\n", root->right->val, root->right->col);
-    printf("%f | %d\n", root->left->right->val, root->left->right->col);
-    printf("%f | %d\n", root->right->right->val, root->right->right->col);
+static RBTree *create_dummy_tree() {
+    RBTree *tree1 = rbtree();
+    insert(tree1, 20);
+    insert(tree1, 1);
+    insert(tree1, 19);
+    insert(tree1, 2);
+    insert(tree1, 5);
+    insert(tree1, 8);
+    insert(tree1, 33);
+    insert(tree1, 3);
+    insert(tree1, 22);
+    insert(tree1, 17);
+    insert(tree1, 4);
+    insert(tree1, 23);
+    insert(tree1, 16);
+    insert(tree1, 27);
+    insert(tree1, 11);
+    insert(tree1, 6);
+    insert(tree1, 7);
+    insert(tree1, 25);
+    insert(tree1, 14);
+    insert(tree1, 9);
+    return tree1;
+}
+
+bool test_suite_one() {
+    RBTree *tree1 = create_dummy_tree();
+    delete(tree1, 33);
+    return (
+            tree1->root->val == 5 && tree1->root->col == black &&
+            tree1->root->right->val == 19 && tree1->root->right->col == red &&
+            tree1->root->right->right->val == 22 && tree1->root->right->right->col == black &&
+            tree1->root->right->right->left->val == 20 &&
+            tree1->root->right->right->left->col == black &&
+            tree1->root->right->right->right->val == 25 &&
+            tree1->root->right->right->right->col == red &&
+            tree1->root->right->right->right->left->val == 23 &&
+            tree1->root->right->right->right->left->col == black &&
+            tree1->root->right->right->right->right->val == 27 &&
+            tree1->root->right->right->right->right->col == black
+    );
 }
 
 
-void test_suite_two(RBNode *root) {
-    if (root != NULL) {
-        root->col = black;
-        test_suite_two(root->left);
-        test_suite_two(root->right);
-    }
+bool test_suite_two() {
+    RBTree *tree1 = create_dummy_tree();
+    delete(tree1, 1);
+    return (
+            tree1->root->val == 5 && tree1->root->col == black &&
+            tree1->root->left->val == 3 && tree1->root->left->col == black &&
+            tree1->root->left->left->val == 2 && tree1->root->left->left->col == black &&
+            tree1->root->left->right->val == 4 && tree1->root->left->right->col == black
+    );
 }
 
+bool test_suite_three() {
+    RBTree *tree1 = create_dummy_tree();
+    delete(tree1, 4);
+    delete(tree1, 3);
+    return (
+            tree1->root->val == 19 && tree1->root->col == black &&
+            tree1->root->left->val == 8 && tree1->root->left->col == red &&
+            tree1->root->left->left->val == 5 && tree1->root->left->left->col == black &&
+            tree1->root->left->right->val == 16 && tree1->root->left->right->col == black &&
+            tree1->root->left->left->left->val == 2 &&
+            tree1->root->left->left->left->col == black &&
+            tree1->root->left->left->right->val == 6 &&
+            tree1->root->left->left->right->col == black &&
+            tree1->root->left->right->left->val == 11 &&
+            tree1->root->left->right->left->col == black &&
+            tree1->root->left->right->right->val == 17 &&
+            tree1->root->left->right->right->col == black &&
+            tree1->root->left->left->left->left->val == 1 &&
+            tree1->root->left->left->left->left->col == red &&
+            tree1->root->left->left->right->right->val == 7 &&
+            tree1->root->left->left->right->right->col == red
+    );
+}
 
+bool test_suite_four() {
+    RBTree *tree1 = create_dummy_tree();
+    delete(tree1, 17);
+    return (
+            tree1->root->val == 5 && tree1->root->col == black &&
+            tree1->root->right->val == 19 && tree1->root->right->col == red &&
+            tree1->root->right->left->val == 8 && tree1->root->right->left->col == black &&
+            tree1->root->right->right->val == 22 && tree1->root->right->right->col == black &&
+            tree1->root->right->left->left->val == 6 &&
+            tree1->root->right->left->left->col == black &&
+            tree1->root->right->left->right->val == 11 &&
+            tree1->root->right->left->right->col == red &&
+            tree1->root->right->right->left->val == 20 &&
+            tree1->root->right->right->left->col == black &&
+            tree1->root->right->right->right->val == 27 &&
+            tree1->root->right->right->right->col == red &&
+            tree1->root->right->left->left->right->val == 7 &&
+            tree1->root->right->left->left->right->col == red &&
+            tree1->root->right->left->right->left->val == 9 &&
+            tree1->root->right->left->right->left->col == black &&
+            tree1->root->right->left->right->right->val == 16 &&
+            tree1->root->right->left->right->right->col == black &&
+            tree1->root->right->left->right->right->left->val == 14 &&
+            tree1->root->right->left->right->right->left->col == red &&
+            tree1->root->right->right->right->left->val == 23 &&
+            tree1->root->right->right->right->left->col == black &&
+            tree1->root->right->right->right->right->val == 33 &&
+            tree1->root->right->right->right->right->col == black &&
+            tree1->root->right->right->right->left->right->val == 25 &&
+            tree1->root->right->right->right->left->right->col == red
+    );
+}
 
+bool test_suite_five() {
+    RBTree *tree1 = create_dummy_tree();
+    delete(tree1, 20);
+    return (
+            tree1->root->val == 5 && tree1->root->col == black &&
+            tree1->root->right->val == 19 && tree1->root->right->col == red &&
+            tree1->root->right->left->val == 16 && tree1->root->right->left->col == black &&
+            tree1->root->right->right->val == 27 && tree1->root->right->right->col == black &&
+            tree1->root->right->left->left->val == 8 && tree1->root->right->left->left->col == red &&
+            tree1->root->right->left->right->val == 17 && tree1->root->right->left->right->col == black &&
+            tree1->root->right->left->left->left->val == 6 &&
+            tree1->root->right->left->left->left->col == black &&
+            tree1->root->right->left->left->right->val == 11 &&
+            tree1->root->right->left->left->right->col == black &&
+            tree1->root->right->left->left->left->right->val == 7 &&
+            tree1->root->right->left->left->left->right->col == red &&
+            tree1->root->right->left->left->right->left->val == 9 &&
+            tree1->root->right->left->left->right->left->col == red &&
+            tree1->root->right->left->left->right->right->val == 14 &&
+            tree1->root->right->left->left->right->right->col == red &&
+            tree1->root->right->right->left->val == 23 && tree1->root->right->right->left->col == red &&
+            tree1->root->right->right->right->val == 33 && tree1->root->right->right->right->col == black &&
+            tree1->root->right->right->left->left->val == 22 && tree1->root->right->right->left->left->col == black &&
+            tree1->root->right->right->left->right->val == 25 && tree1->root->right->right->left->right->col == black
+    );
+}
+
+bool test_suite_six() {
+    RBTree *tree1 = create_dummy_tree();
+    delete(tree1, 11);
+    return (
+            tree1->root->val == 5 && tree1->root->col == black &&
+            tree1->root->right->left->val == 16 && tree1->root->right->left->col == black &&
+            tree1->root->right->left->left->val == 8 && tree1->root->right->left->left->col == red &&
+            tree1->root->right->left->right->val == 17 && tree1->root->right->left->right->col == black &&
+            tree1->root->right->left->left->left->val == 6 && tree1->root->right->left->left->left->col == black &&
+            tree1->root->right->left->left->right->val == 9 && tree1->root->right->left->left->right->col == black &&
+            tree1->root->right->left->left->left->right->val == 7 &&
+            tree1->root->right->left->left->left->right->col == red &&
+            tree1->root->right->left->left->right->right->val == 14 &&
+            tree1->root->right->left->left->right->right->col == red
+    );
+}
 

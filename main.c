@@ -2,37 +2,20 @@
 #include "rbtree/rbtree.h"
 
 int main() {
-    RBTree *tree1 = rbtree();
-    insert(tree1, 1);
-    insert(tree1, 2);
-    insert(tree1, 3);
-    insert(tree1, 4);
-    insert(tree1, 5);
-    insert(tree1, 6);
-    delete(tree1, 1);
-    test_suite_one(tree1);
+    bool t1 = test_suite_one(), t2 = test_suite_two(), t3 = test_suite_three(), t4 = test_suite_four(),
+            t5 = test_suite_five(), t6 = test_suite_six();
+    if (t1 && t2 && t3 && t4 && t5 && t6) {
+        printf("\033[0;32m");
+        printf("all tests passed!");
+    } else {
+        printf("\033[0;31m");
+        if (!t1) printf("test one failed");
+        if (!t2) printf("test two failed");
+        if (!t3) printf("test three failed");
+        if (!t4) printf("test four failed");
+        if (!t5) printf("test five failed");
+        if (!t6) printf("test six failed");
+    }
     return 0;
 }
 
-// insert(tree1, 20);
-// insert(tree1, 1);
-// insert(tree1, 19);
-// insert(tree1, 2);
-// insert(tree1, 5);
-// insert(tree1, 8);
-// insert(tree1, 33);
-// insert(tree1, 3);
-// insert(tree1, 22);
-// insert(tree1, 17);
-// insert(tree1, 4);
-// insert(tree1, 23);
-// insert(tree1, 16);
-// insert(tree1, 27);
-// insert(tree1, 11);
-// insert(tree1, 6);
-// insert(tree1, 7);
-// insert(tree1, 25);
-// insert(tree1, 14);
-// insert(tree1, 9);
-// inorder(tree1);
-// test_suite_one(tree1);

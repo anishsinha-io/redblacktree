@@ -5,6 +5,8 @@
 #ifndef REDBLACKTREE_RBTREE_H
 #define REDBLACKTREE_RBTREE_H
 
+#include <stdbool.h>
+
 typedef struct RBTree RBTree;
 typedef struct RBNode RBNode;
 
@@ -15,8 +17,12 @@ void inorder(RBTree *);
 void preorder(RBTree *);
 void postorder(RBTree *);
 RBNode *root(RBTree *);
-void test_suite_one(RBTree *);
-void test_suite_two(RBNode *);
+bool test_suite_one(void);
+bool test_suite_two(void);
+bool test_suite_three(void);
+bool test_suite_four(void);
+bool test_suite_five(void);
+bool test_suite_six(void);
 void test1(RBTree *, double);
 
 
