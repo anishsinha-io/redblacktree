@@ -261,7 +261,7 @@ static void resolve_double_black(RBNode **root, RBNode *double_black_node) {
                 recolor_children(new_par, black);
             }
         } else {
-            // cases 2 and 4 --> node is a right child
+            // cases 3 and 4 --> node is a right child
             if (!is_left_child(double_black_node)) {
                 if (!red_left_child(sib)) {
                     // if we're here, we need to rotate left about the sibling first, recolor, then right about the parent
